@@ -551,7 +551,7 @@
         }
 
         // URL Web App GAS Anda. Kosongkan jika ingin mode lokal/demo sementara.
-        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyqE65WemMs86CVnrcGtmnQz6wzFL-x7SQTnzp3LV_zVwht7YGIvVyjnGKnR3VS-8zHFw/exec';
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwHNUIQL261oUN8oniwr3GozpXNX4Jc_Thu6Wvf_7GuvRBC4uHShOI29ndkbTKMgbCX/exec';
 
         async function initializeApp() {
             const loginBtn = document.querySelector('button[onclick="handleUnifiedLogin(event)"]');
@@ -561,7 +561,6 @@
             }
 
             try {
-                // UBAH BARIS IF INI KEMBALI SEPERTI SEMULA
                 if (GAS_API_URL === '' || GAS_API_URL === '') {
                     console.log("Menggunakan mode penyimpanan lokal/demo karena URL GAS belum diatur.");
                     loadLocalFallback();
@@ -807,7 +806,7 @@
             if (e && e.preventDefault) e.preventDefault();
 
             const regNama = document.getElementById('regNama').value;
-            const regEmail = document.getElementById('regEmail').value;
+            const regEmail = document.getElementById('regEmail').value.trim(); // Trim for safety
             const regPassword = document.getElementById('regPassword').value;
             const regKelas = document.getElementById('regKelas').value;
 
@@ -815,7 +814,7 @@
                 return notifyError('Harap lengkapi seluruh isian form pendaftaran!');
             }
 
-            if (db.users.find(u => u.email === regEmail)) {
+            if (db.users.find(u => String(u.email).toLowerCase() === String(regEmail).toLowerCase())) {
                 return notifyError('Email sudah terdaftar. Silakan gunakan email lain atau langsung Login.');
             }
 
@@ -931,12 +930,17 @@
         function handleUnifiedLogin(e) {
             if (e && e.preventDefault) e.preventDefault();
 
-            const email = document.getElementById('loginEmail').value;
+            // BUG FIX 1: Hapus spasi kosong dengan .trim() yang mungkin disebabkan autofill browser
+            const email = document.getElementById('loginEmail').value.trim();
             const pass = document.getElementById('loginPass').value;
 
             if (!email || !pass) return notifyError('Harap isi Email dan Password!');
 
-            const user = db.users.find(u => u.email === email && u.password === pass);
+            // BUG FIX 2: Pencocokan email tidak sensitif huruf besar/kecil (case-insensitive) menggunakan toLowerCase()
+            const user = db.users.find(u =>
+                String(u.email).toLowerCase() === String(email).toLowerCase() &&
+                u.password === pass
+            );
 
             if (user) {
                 const isAdmin = user.role === 'Admin Sistem';
@@ -976,7 +980,10 @@
                     } catch (e) { }
                     document.getElementById('loginEmail').value = '';
                     document.getElementById('loginPass').value = '';
-                    checkAuth();
+
+                    // BUG FIX 3: Reload halaman secara utuh untuk membersihkan cache memory SPA.
+                    // Ini mencegah terjadinya error/bentrok state ketika login dengan akun yang berbeda peran.
+                    window.location.reload();
                 }
             });
         }
